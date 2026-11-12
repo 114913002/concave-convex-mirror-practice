@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>光學大挑戰｜鏡子成像與光路</title>
+<style>
+:root{--ink:#2b2250;--gold:#ffd23f;--pink:#ff6fa5;--ok:#2ecc71;--bad:#ff4d4d}
+*{box-sizing:border-box}
+body{margin:0;min-height:100vh;color:#fff;font-family:"Noto Sans TC","Microsoft JhengHei",system-ui,sans-serif;
+  background:radial-gradient(circle at 20% 10%,#3b2a8f,#161036 70%) fixed}
+.hidden{display:none!important}
+#app{max-width:1100px;margin:0 auto;padding:14px 14px 90px}
+button{font-family:inherit}
+
+/* 開始 / 結束畫面 */
+.screen{animation:fadeIn .4s}
+.panel{background:rgba(255,255,255,.08);border:2px solid rgba(255,255,255,.2);border-radius:22px;padding:28px;text-align:center;backdrop-filter:blur(6px)}
+h1{font-size:2.2rem;margin:.2em 0;text-shadow:0 3px 0 #0006}
+.sub{opacity:.85;line-height:1.8}
+.rules{display:grid;grid-template-columns:repeat(auto-fit,minmax(220px,1fr));gap:12px;margin:20px 0;text-align:left}
+.rules div{background:#0003;border-radius:14px;padding:12px 14px;line-height:1.6}
+.bigbtn{font-size:1.3rem;font-weight:800;color:#3a2200;background:linear-gradient(#ffe27a,#ffb800);border:0;border-radius:999px;
+  padding:14px 40px;cursor:pointer;box-shadow:0 6px 0 #b27a00,0 12px 20px #0006;transition:.1s}
+.bigbtn:active{transform:translateY(4px);box-shadow:0 2px 0 #b27a00}
+.emojis{font-size:2.4rem;letter-spacing:.3rem}
+
+/* HUD */
+.hud{display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:8px;flex-wrap:wrap}
+.chip{background:#0004;border:2px solid #fff3;border-radius:999px;padding:6px 16px;font-weight:700}
+.chip b{font-size:1.25rem;color:var(--gold)}
+.clock{font-family:"Courier New",monospace;font-size:1.6rem;font-weight:900;min-width:150px;text-align:center;
+  background:#000a;border:3px solid #fff5;border-radius:14px;padding:2px 14px;box-shadow:inset 0 0 12px #0008}
+.clock.gold{color:#7CFFB2}.clock.warn{color:#ffb347}.clock.danger{color:#ff6b6b;animation:pulse .5s infinite alternate}
+.timebar{position:relative;height:14px;background:#0005;border-radius:99px;overflow:hidden;margin-bottom:6px;border:2px solid #fff3}
+#tfill{height:100%;width:0;background:linear-gradient(90deg,#2ecc71,#7CFFB2);transition:background .2s}
+#tfill.warn{background:linear-gradient(90deg,#ffb347,#ff8a00)}
+#tfill.danger{background:linear-gradient(90deg,#ff6b6b,#ff2d2d)}
+.mark15{position:absolute;left:75%;top:0;bottom:0;width:3px;background:#fff}
+#timeHint{font-size:.9rem;text-align:right;opacity:.9;margin-bottom:8px;min-height:1.3em}
+
+/* 題目卡牌 */
+.qcard{position:relative;background:linear-gradient(160deg,#fffdf4,#f4e7c6);color:var(--ink);border-radius:22px;padding:18px 20px 16px;
+  border:6px solid #fff;box-shadow:0 0 0 3px #c9962b,0 14px 30px #000a;animation:dealIn .5s cubic-bezier(.2,1.2,.4,1)}
+.qcard .corner{position:absolute;font-weight:900;color:#c9962b;font-size:1.2rem;line-height:1}
+.corner.tl{left:12px;top:8px}.corner.tr{right:12px;top:8px}.corner.bl{left:12px;bottom:8px;transform:rotate(180deg)}.corner.br{right:12px;bottom:8px;transform:rotate(180deg)}
+.qtag{display:inline-block;background:var(--ink);color:#ffe27a;border-radius:999px;font-size:.85rem;font-weight:700;padding:3px 14px;margin:0 0 6px}
+.qtext{margin:4px 22px 12px;font-size:1.35rem;line-height:1.55;font-weight:800}
+.stage{background:#0e1240;border-radius:14px;border:3px solid #2b2250;overflow:hidden;text-align:center}
+.stage svg{display:block;width:100%;height:auto;max-height:44vh;margin:0 auto}
+
+/* 選項 */
+.options{display:grid;gap:12px;margin-top:14px}
+.options.text{grid-template-columns:repeat(auto-fit,minmax(270px,1fr))}
+.options.image{grid-template-columns:repeat(auto-fit,minmax(320px,1fr))}
+.opt{position:relative;display:flex;align-items:center;gap:10px;text-align:left;cursor:pointer;color:var(--ink);
+  background:linear-gradient(160deg,#fffdf4,#f1e3bd);border:4px solid #fff;border-radius:16px;padding:10px 12px;
+  box-shadow:0 0 0 2px #c9962b,0 6px 0 #8f6a1a,0 10px 16px #0007;transition:transform .12s,box-shadow .12s;font-size:1.1rem;font-weight:700}
+.opt:hover:not(:disabled){transform:translateY(-4px) rotate(-.6deg)}
+.opt:disabled{cursor:default}
+.opt .letter{flex:none;width:34px;height:34px;border-radius:50%;background:var(--ink);color:#ffe27a;display:grid;place-items:center;font-weight:900}
+.opt .body{flex:1;min-width:0}
+.opt svg{display:block;width:100%;height:auto;border-radius:10px;border:2px solid #2b2250}
+.opt.correct{background:linear-gradient(160deg,#eaffef,#9af0b4);box-shadow:0 0 0 3px var(--ok),0 0 28px var(--ok);animation:pop .5s}
+.opt.wrong{background:linear-gradient(160deg,#ffecec,#ffb3b3);box-shadow:0 0 0 3px var(--bad);animation:shake .4s}
+.opt.dim{opacity:.55}
+
+/* 回饋 */
+.fb{position:fixed;left:50%;bottom:14px;transform:translateX(-50%);width:min(760px,94vw);z-index:20;border-radius:18px;padding:12px 16px;
+  display:flex;gap:12px;align-items:center;box-shadow:0 10px 30px #000b;animation:slideUp .35s;color:#fff;border:3px solid #fff}
+.fb.ok{background:linear-gradient(#27ae60,#1e8449)}.fb.no{background:linear-gradient(#e74c3c,#a93226)}
+.fb .ico{font-size:2rem}.fb .msg{flex:1;line-height:1.5}.fb .msg b{font-size:1.15rem}.fb .msg small{display:block;opacity:.95}
+.fb button{background:#fff;color:#333;border:0;border-radius:999px;padding:8px 16px;font-weight:800;cursor:pointer;white-space:nowrap}
+
+/* 結算 */
+.score-big{font-size:4rem;font-weight:900;color:var(--gold);text-shadow:0 4px 0 #0007}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(170px,1fr));gap:10px;margin:16px 0}
+.stats div{background:#0004;border-radius:14px;padding:10px}
+.stats b{display:block;font-size:1.4rem;color:#7CFFB2}
+table{width:100%;border-collapse:collapse;margin-top:10px;font-size:.92rem}
+th,td{padding:6px 8px;border-bottom:1px solid #fff2;text-align:center}
+td.l{text-align:left}
+.good{color:#7CFFB2}.bad{color:#ff8e8e}
+.bump{animation:pop .4s}
+
+/* SVG 動畫 */
+.flow{stroke-dasharray:16 10;animation:flow .9s linear infinite}
+.spin{transform-box:fill-box;transform-origin:center;animation:spin 14s linear infinite}
+.reveal{opacity:0;transition:opacity .7s}.reveal.show{opacity:1}
+.flick{transform-box:fill-box;transform-origin:50% 100%;animation:flick .25s infinite alternate}
+@keyframes flow{to{stroke-dashoffset:-26}}
+@keyframes spin{to{transform:rotate(360deg)}}
+@keyframes flick{from{transform:scale(1,1)}to{transform:scale(.9,1.12)}}
+@keyframes fadeIn{from{opacity:0}to{opacity:1}}
+@keyframes dealIn{from{transform:translateY(-40px) rotate(-3deg) scale(.95);opacity:0}to{transform:none;opacity:1}}
+@keyframes pop{0%{transform:scale(.9)}60%{transform:scale(1.06)}100%{transform:scale(1)}}
+@keyframes shake{25%{transform:translateX(-6px)}75%{transform:translateX(6px)}}
+@keyframes pulse{to{transform:scale(1.08)}}
+@keyframes slideUp{from{transform:translate(-50%,40px);opacity:0}to{transform:translate(-50%,0);opacity:1}}
+@media(max-width:600px){h1{font-size:1.6rem}.qtext{font-size:1.1rem;margin:4px 8px 10px}.qcard{padding:14px 10px}}
+</style>
+</head>
+<body>
+<div id="app">
+
+  <!-- 開始畫面 -->
+  <section id="start" class="screen">
+    <div class="panel">
+      <div class="emojis">🔦🪞🕯️🔥</div>
+      <h1>光學大挑戰</h1>
+      <p class="sub">平面鏡・凹面鏡・凸面鏡｜成像位置、光的反射路徑、聚光點火</p>
+      <div class="rules">
+        <div>🃏 <b>30 題</b>隨機出題，全部都是 5 選 1 的卡牌題。</div>
+        <div>⏱️ 每題限時 <b>20 秒</b>。<br>15 秒內答對 <b>+10 分</b>（含加分 5）<br>15～20 秒答對 <b>+5 分</b></div>
+        <div>❌ 答錯或超時 <b>0 分</b>，顯示正解後直接跳下一題。</div>
+        <div>📏 圖中 1 格＝1 單位；凹、凸面鏡焦距 f＝2 格（球心 C＝4 格）。</div>
+      </div>
+      <button class="bigbtn" id="startBtn">開始挑戰 ▶</button>
+      <p class="sub" id="bestTxt" style="margin-top:14px"></p>
+    </div>
+  </section>
+
+  <!-- 遊戲畫面 -->
+  <section id="game" class="screen hidden">
+    <div class="hud">
+      <div class="chip">第 <b id="qn">1</b> / 30 題</div>
+      <div class="clock gold" id="clock">00.0</div>
+      <div class="chip">⭐ <b id="score">0</b> 分</div>
+    </div>
+    <div class="timebar"><div id="tfill"></div><div class="mark15"></div></div>
+    <div id="timeHint"></div>
+
+    <article class="qcard" id="qcard">
+      <span class="corner tl">♦</span><span class="corner tr">♦</span><span class="corner bl">♦</span><span class="corner br">♦</span>
+      <div class="qtag" id="qtag"></div>
+      <h2 class="qtext" id="qtext"></h2>
+      <div class="stage" id="stage"></div>
+    </article>
+    <div class="options" id="options"></div>
+  </section>
+
+  <!-- 結算畫面 -->
+  <section id="end" class="screen hidden">
+    <div class="panel">
+      <div class="emojis" id="endEmoji"></div>
+      <h1 id="rank"></h1>
+      <div class="score-big"><span id="finalScore">0</span><small style="font-size:1.2rem"> / 300</small></div>
+      <p class="sub" id="bestTxt2"></p>
+      <div class="stats" id="stats"></div>
+      <div class="stats" id="typeStats"></div>
+      <div style="overflow-x:auto"><table id="review"></table></div>
+      <br><button class="bigbtn" id="againBtn">再玩一次 🔁</button>
+    </div>
+  </section>
+</div>
+
+<div class="fb hidden" id="fb"></div>
+
+<script>
+/* ============ 可調整參數 ============ */
+const TOTAL=30;        // 題數
+const LIMIT=20;        // 每題限時（秒）
+const BONUS_T=15;      // 幾秒內答對有額外加分
+const BASE_PTS=5;      // 答對基本分
+const BONUS_PTS=5;     // 額外加分
+const NEXT_DELAY=2600; // 作答後自動跳下一題的等待（毫秒）
+
+/* ============ 工具 ============ */
+const W=900,H=380,MX=560,Y0=215,S=48,BASE_F=2;   // 畫布、鏡面位置、主軸高度、每格像素、焦距(格)
+const rnd=(a,b)=>Math.floor(Math.random()*(b-a+1))+a;
+const pick=a=>a[Math.floor(Math.random()*a.length)];
+const shuffle=a=>{a=a.slice();for(let i=a.length-1;i>0;i--){const j=Math.floor(Math.random()*(i+1));[a[i],a[j]]=[a[j],a[i]]}return a};
+const fmt=n=>String(parseFloat(n.toFixed(1)));
+const un=(x,y)=>{const l=Math.hypot(x,y)||1;return{x:x/l,y:y/l}};
+const rot=(v,deg)=>{const a=deg*Math.PI/180;return{x:v.x*Math.cos(a)-v.y*Math.sin(a),y:v.x*Math.sin(a)+v.y*Math.cos(a)}};
+const angDiff=(a,b)=>Math.abs(Math.atan2(a.x*b.y-a.y*b.x,a.x*b.x+a.y*b.y))*180/Math.PI;
+const MIRROR_NAME={plane:'平面鏡',concave:'凹面鏡',convex:'凸面鏡'};
+const U_LIST={plane:[1,2,3,4,5,6],concave:[1,3,4,5,6,8],convex:[1,2,3,4,6,8]};
+let uid=0;
+
+/* ============ 光學計算 ============ */
+// v>0：實像（鏡前）；v<0：虛像（鏡後）；m<0 倒立
+function imageOf(t,u,f=BASE_F){
+  if(t==='plane')return{v:-u,m:1};
+  if(t==='concave'){if(Math.abs(u-f)<1e-9)return null;const v=u*f/(u-f);return{v,m:-v/u};}
+  const ff=-f,v=u*ff/(u-ff);return{v,m:-v/u};
+}
+function desc(t,u){
+  const im=imageOf(t,u);if(!im)return null;const a=Math.abs(im.m);
+  return{side:im.v>0?'前':'後',d:Math.abs(im.v),orient:im.m>0?'正立':'倒立',size:a>1.05?'放大':a<.95?'縮小':'等大',kind:im.v>0?'實像':'虛像'};
+}
+const NOIMG='不成像（反射光線平行射出）';
+const descText=d=>`鏡${d.side} ${fmt(d.d)!==String(d.d)?'約 ':''}${fmt(d.d)} 格，${d.orient}${d.size}的${d.kind}`;
+function mutate(d){
+  const r={...d};
+  const ops=[()=>r.orient=r.orient==='正立'?'倒立':'正立',
+    ()=>r.size=pick(['放大','縮小','等大'].filter(s=>s!==r.size)),
+    ()=>{r.side=r.side==='前'?'後':'前';r.kind=r.kind==='實像'?'虛像':'實像'},
+    ()=>{r.d=Math.max(1,r.d+pick([-2,-1,1,2]))}];
+  shuffle(ops).slice(0,rnd(1,2)).forEach(f=>f());return r;
+}
+
+/* ============ SVG 繪圖 ============ */
+function defs(id){return `<defs>
+<linearGradient id="bg${id}" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#2a3b8f"/><stop offset="1" stop-color="#12184a"/></linearGradient>
+<linearGradient id="mir${id}" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#f4fbff"/><stop offset=".5" stop-color="#8fd0ff"/><stop offset="1" stop-color="#e8f6ff"/></linearGradient>
+<radialGradient id="flame${id}" cx=".5" cy=".7" r=".6"><stop offset="0" stop-color="#fff7a8"/><stop offset=".6" stop-color="#ffb02e"/><stop offset="1" stop-color="#ff5a1f"/></radialGradient>
+<filter id="glow${id}" filterUnits="userSpaceOnUse" x="0" y="0" width="${W}" height="${H}"><feGaussianBlur stdDeviation="3" result="b"/><feMerge><feMergeNode in="b"/><feMergeNode in="SourceGraphic"/></feMerge></filter>
+</defs>`}
+const STARS=[[60,40,1.5],[200,70,1],[330,30,1.8],[450,60,1],[700,35,1.5],[820,80,1.2],[100,330,1.2],[260,350,1.6],[520,345,1],[760,340,1.4],[850,300,1]];
+
+function ray(x1,y1,x2,y2,color,o={}){
+  let s=`<line x1="${x1}" y1="${y1}" x2="${x2}" y2="${y2}" stroke="${color}" stroke-width="${o.w||3}" stroke-linecap="round" ${o.flow?'class="flow"':''} ${o.id?`filter="url(#glow${o.id})"`:''}/>`;
+  if(o.arrow!==false){
+    const p=o.at||.55,mx=x1+(x2-x1)*p,my=y1+(y2-y1)*p,a=Math.atan2(y2-y1,x2-x1)*180/Math.PI;
+    s+=`<polygon points="-10,-7 8,0 -10,7" fill="${color}" stroke="#0b0e3a" stroke-width="1" transform="translate(${mx},${my}) rotate(${a})"/>`;
+  }
+  return s;
+}
+function txt(x,y,t,fs,color,anchor='middle'){
+  return `<text x="${x}" y="${y}" text-anchor="${anchor}" font-size="${fs}" font-weight="800" fill="${color}" stroke="#0b0e3a" stroke-width="4" paint-order="stroke" stroke-linejoin="round">${t}</text>`;
+}
+function candle(id,x,m,o={}){
+  const k=.8,sx=Math.abs(m)*k,sy=m*k,vir=o.virtual,dash=vir?'stroke-dasharray="5 4"':'';
+  const op=vir?.62:1,fs=o.fs||15,tipY=Y0-74*sy;
+  let s=`<g opacity="${op}">`;
+  if(!vir)s+=`<circle cx="${x}" cy="${Y0-60*sy}" r="${24*Math.abs(sx)+6}" fill="#ffb02e" opacity=".25"/>`;
+  s+=`<g transform="translate(${x},${Y0}) scale(${sx},${sy})">
+   <rect x="-9" y="-40" width="18" height="40" rx="3" fill="#ffe9b8" stroke="#b9852b" stroke-width="2" vector-effect="non-scaling-stroke" ${dash}/>
+   <rect x="-9" y="-30" width="18" height="6" fill="#ff8fb1" opacity=".85"/>
+   <line x1="0" y1="-40" x2="0" y2="-47" stroke="#444" stroke-width="2" vector-effect="non-scaling-stroke"/>
+   <path d="M0,-46 C-10,-56 -5,-65 0,-74 C5,-65 10,-56 0,-46Z" fill="url(#flame${id})" stroke="#ff7a1a" stroke-width="1.5" vector-effect="non-scaling-stroke" ${dash}/>
+   <path d="M0,-48 C-4,-54 -2,-59 0,-63 C2,-59 4,-54 0,-48Z" fill="#fff6b0"/></g></g>`;
+  if(o.label)s+=txt(x,m>0?tipY-10:tipY+fs+10,o.label,fs+2,o.color||'#fff');
+  return s;
+}
+function matchstick(id,x,lit,fs=15){
+  let s=`<g transform="translate(${x},${Y0})">`;
+  if(lit)s+=`<circle cx="0" cy="-78" r="34" fill="#ffb02e" opacity=".3"><animate attributeName="r" values="30;40;30" dur=".6s" repeatCount="indefinite"/></circle>`;
+  s+=`<rect x="-3.5" y="-62" width="7" height="62" rx="2" fill="#e2b06a" stroke="#8a5a1e" stroke-width="1.5"/>
+   <ellipse cx="0" cy="-64" rx="8" ry="10" fill="${lit?'#7a1d1a':'#e03a2f'}" stroke="#7a1d1a" stroke-width="1.5"/>`;
+  if(lit)s+=`<g class="flick"><path d="M0,-72 C-12,-86 -6,-98 0,-112 C6,-98 12,-86 0,-72Z" fill="url(#flame${id})" stroke="#ff7a1a" stroke-width="1.5"/><path d="M0,-75 C-5,-83 -3,-90 0,-96 C3,-90 5,-83 0,-75Z" fill="#fff6b0"/></g>`;
+  return s+`</g>`;
+}
+function sunIcon(x,y){
+  let r='';for(let i=0;i<12;i++){const a=i*Math.PI/6;r+=`<line x1="${Math.cos(a)*31}" y1="${Math.sin(a)*31}" x2="${Math.cos(a)*43}" y2="${Math.sin(a)*43}" stroke="#ffb800" stroke-width="5" stroke-linecap="round"/>`}
+  return `<g transform="translate(${x},${y})"><g class="spin">${r}</g><circle r="27" fill="#ffd23f" stroke="#ff9f1c" stroke-width="3"/>
+  <circle cx="-9" cy="-5" r="3" fill="#7a3b00"/><circle cx="9" cy="-5" r="3" fill="#7a3b00"/><path d="M-10,7 Q0,17 10,7" stroke="#7a3b00" stroke-width="3" fill="none" stroke-linecap="round"/></g>`;
+}
+const SUN_YS=[-75,-50,-25,0,25,50,75];
+function sunRays(id,xEnd,mini){
+  let s=mini?'':sunIcon(70,70)+txt(70,134,'太陽光',15,'#ffe28a');
+  SUN_YS.forEach(y=>{s+=ray(140,Y0+y,xEnd,Y0+y,'#ffd23f',{id,w:3,flow:1,at:.45})});
+  return s;
+}
+function mirrorSvg(id,t){
+  const top=Y0-120,bot=Y0+120,b=16;let s='';
+  if(t==='plane'){
+    for(let y=top;y<bot;y+=14)s+=`<line x1="${MX+3}" y1="${y}" x2="${MX+15}" y2="${y+11}" stroke="#9aa6ff" stroke-width="2"/>`;
+    return s+`<rect x="${MX-3}" y="${top}" width="6" height="${bot-top}" rx="3" fill="url(#mir${id})" stroke="#fff" stroke-width="1.5"/>`;
+  }
+  const x0=t==='concave'?MX-b:MX+b,cx=t==='concave'?MX+b:MX-b;
+  for(let i=0;i<=18;i++){const q=i/18,x=(1-q)**2*x0+2*(1-q)*q*cx+q*q*x0,y=(1-q)**2*top+2*(1-q)*q*Y0+q*q*bot;
+    s+=`<line x1="${x+3}" y1="${y}" x2="${x+15}" y2="${y+11}" stroke="#9aa6ff" stroke-width="2"/>`;}
+  return s+`<path d="M${x0},${top} Q${cx},${Y0} ${x0},${bot}" fill="none" stroke="#8fd0ff" stroke-width="7" stroke-linecap="round"/>
+   <path d="M${x0-1},${top} Q${cx-2},${Y0} ${x0-1},${bot}" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" opacity=".9"/>`;
+}
+
+/* 通用場景 */
+function scene(o){
+  const id=++uid,mini=!!o.mini,fs=mini?24:15,mt=o.mtype,f=o.f||BASE_F;
+  const vb=mini?'120 60 780 280':`0 0 ${W} ${H}`;
+  let s=`<svg viewBox="${vb}" xmlns="http://www.w3.org/2000/svg" preserveAspectRatio="xMidYMid meet">${defs(id)}`;
+  s+=`<rect width="${W}" height="${H}" fill="url(#bg${id})"/>`;
+  let g='';for(let x=0;x<=W;x+=40)g+=`<line x1="${x}" y1="0" x2="${x}" y2="${H}"/>`;for(let y=0;y<=H;y+=40)g+=`<line x1="0" y1="${y}" x2="${W}" y2="${y}"/>`;
+  s+=`<g stroke="rgba(255,255,255,.05)">${g}</g>`;
+  STARS.forEach(([x,y,r])=>s+=`<circle cx="${x}" cy="${y}" r="${r}" fill="#fff" opacity=".5"/>`);
+  if(!o.noAxis)s+=`<line x1="10" y1="${Y0}" x2="890" y2="${Y0}" stroke="#c9d3ff" stroke-width="1.5" stroke-dasharray="8 6" opacity=".7"/>`;
+  // 刻度
+  if(!o.noAxis)for(let n=-6;n<=10;n++){
+    const x=MX-n*S;if(x<20||x>880||n===0)continue;
+    s+=`<line x1="${x}" y1="${Y0-5}" x2="${x}" y2="${Y0+5}" stroke="#c9d3ff" stroke-width="1.5"/>`;
+    if(o.nums)s+=`<text x="${x}" y="${Y0+22}" font-size="13" text-anchor="middle" fill="${n>0?'#9fb0ff':'#ffb0d0'}">${Math.abs(n)}</text>`;
+  }
+  if(o.nums&&!mini){
+    s+=txt(MX-14,36,'◀ 鏡前（物體側）',15,'#b9c4ff','end')+txt(MX+14,36,'鏡後 ▶',15,'#ffc2dc','start');
+    s+=`<text x="12" y="${H-10}" font-size="13" fill="#9fb0ff">每格 = 1 單位</text>`;
+  }
+  if(o.sun)s+=sunRays(id,o.sunTo||MX,mini);
+  if(mt&&mt!=='none')s+=mirrorSvg(id,mt);
+  // 焦點 F、球心 C
+  if(mt==='concave'||mt==='convex'){
+    const sg=mt==='concave'?-1:1;
+    const mk=(n,lab,col)=>{const x=MX+sg*n*S,pw=fs*1.8;
+      return `<circle cx="${x}" cy="${Y0}" r="${mini?7:5}" fill="${col}" stroke="#fff" stroke-width="1.5"/>
+       <rect x="${x-pw/2}" y="${Y0+10}" width="${pw}" height="${fs+8}" rx="7" fill="rgba(10,12,50,.85)" stroke="${col}"/>
+       <text x="${x}" y="${Y0+10+fs+1}" text-anchor="middle" font-size="${fs}" font-weight="800" fill="${col}">${lab}</text>`};
+    if(o.showF!==false)s+=mk(f,'F','#7CFFB2');
+    if(o.showC!==false)s+=mk(2*f,'C','#ffd23f');
+  }
+  (o.objs||[]).forEach(ob=>s+=candle(id,MX-ob.u*S,1,{label:ob.label,color:ob.color||'#7CFFB2',fs}));
+  (o.imgs||[]).forEach(im=>s+=candle(id,MX-im.v*S,im.m,{virtual:im.v<0,label:im.label,color:'#ff9ec4',fs}));
+  if(o.match)s+=matchstick(id,MX-o.match.u*S,o.match.lit);
+  if(o.extra)s+=o.extra(id);
+  if(o.reveal)s+=`<g class="reveal">${o.reveal(id)}</g>`;
+  return s+'</svg>';
+}
+
+/* ============ 題型 1：由成像找物體位置 ============ */
+function gen1(){
+  const mt=pick(['plane','concave','convex']),name=MIRROR_NAME[mt];
+  const u=pick(U_LIST[mt]),im=imageOf(mt,u),mode=Math.random()<.5?'text':'image';
+  const stage=scene({mtype:mt,nums:true,imgs:[{v:im.v,m:im.m,label:'像'}],
+    reveal:id=>candle(id,MX-u*S,1,{label:'物體',color:'#7CFFB2'})});
+  let pool=U_LIST[mt].filter(x=>x!==u);if(mt==='concave')pool.push(2);
+  const us=[u,...shuffle(pool).slice(0,4)];
+  const options=shuffle(us).map(x=>({correct:x===u,
+    html:mode==='text'?`鏡前 ${x} 格處`:scene({mtype:mt,mini:true,objs:[{u:x,label:'物'}]})}));
+  const d=descText(desc(mt,u));
+  return{type:1,tag:'🔍 由成像找物體位置',mode,stage,options,
+    text:mode==='text'?`${name}所成的像如圖${im.v<0?'（虛線表示虛像）':''}，請問物體原本放在哪個位置？`
+                      :`${name}所成的像如圖，要得到這個像，物體應放在下列哪一張圖所示的位置？`,
+    explain:`物體在鏡前 ${u} 格 → 成像：${d}。`};
+}
+
+/* ============ 題型 2：由物體位置判斷成像 ============ */
+function gen2(){
+  const mt=pick(['plane','concave','convex']),name=MIRROR_NAME[mt];
+  const mode=Math.random()<.5?'text':'image';
+  let list=U_LIST[mt].slice();if(mt==='concave'&&mode==='text')list.push(2);
+  const u=pick(list),im=imageOf(mt,u),dsc=desc(mt,u);
+  const objStage=(rev)=>scene({mtype:mt,nums:true,objs:[{u,label:'物體'}],reveal:rev});
+  if(mode==='text'){
+    const correct=dsc?descText(dsc):NOIMG;
+    const stage=objStage(im?id=>candle(id,MX-im.v*S,im.m,{virtual:im.v<0,label:'像',color:'#ff9ec4'}):null);
+    const set=new Set([correct]),dec=[];
+    const add=t=>{if(!set.has(t)&&dec.length<4){set.add(t);dec.push(t)}};
+    if(dsc){
+      shuffle(Array.from({length:14},()=>descText(mutate(dsc)))).slice(0,6).forEach(t=>{if(dec.length<2)add(t)});
+      if(mt==='concave'&&Math.random()<.35)add(NOIMG);
+    }
+    const poolT=[];['plane','concave','convex'].forEach(t=>U_LIST[t].forEach(x=>{const d=desc(t,x);if(d)poolT.push(descText(d))}));
+    shuffle(poolT).forEach(add);
+    const options=shuffle([correct,...dec]).map(t=>({html:t,correct:t===correct}));
+    return{type:2,tag:'🕯️ 判斷成像位置與情況',mode,stage,options,
+      text:`在${name}前 ${u} 格處放一支蠟燭（如圖），所成的像的位置與情況為何？`,
+      explain:`正確答案：${correct}。`};
+  }
+  // image 版本
+  const cs=[];const far=(a,b)=>Math.abs(a.v-b.v)>.6||Math.abs(a.m-b.m)>.35;
+  const okc=(v,m)=>Math.abs(m)<=2.5&&v<=9&&v>=-7;
+  const tryAdd=(v,m)=>{if(!okc(v,m))return;const c={v,m};if(!far(c,im)||cs.some(x=>!far(x,c)))return;cs.push(c)};
+  shuffle([[im.v,-im.m],[-im.v,im.m],[im.v,im.m*pick([.5,1.8])],[-im.v,-im.m]]).forEach(r=>tryAdd(...r));
+  const more=[];['plane','concave','convex'].forEach(t=>{if(t!==mt){const x=imageOf(t,u);if(x)more.push([x.v,x.m])}});
+  U_LIST[mt].forEach(x=>{if(x!==u){const y=imageOf(mt,x);if(y)more.push([y.v,y.m])}});
+  shuffle(more).forEach(r=>tryAdd(...r));
+  for(let i=0;i<60&&cs.length<4;i++)tryAdd(+(Math.random()*12-4).toFixed(1),pick([-1.5,-1,-.5,.5,1,1.5,2]));
+  const all=[{...im,ok:true},...shuffle(cs).slice(0,4)];
+  const options=shuffle(all).map(c=>({correct:!!c.ok,html:scene({mtype:mt,mini:true,objs:[{u,label:'物'}],imgs:[{v:c.v,m:c.m,label:'像'}]})}));
+  return{type:2,tag:'🕯️ 判斷成像位置與情況',mode,stage:objStage(null),options,
+    text:`在${name}前 ${u} 格處放一支蠟燭（如圖），下列哪一張圖正確畫出它的像？（虛線＝虛像）`,
+    explain:`正確成像：${descText(dsc)}。`};
+}
+
+/* ============ 題型 3：光的反射路徑 ============ */
+function buildRaySc(){
+  const mt=pick(['plane','concave','convex']),name=MIRROR_NAME[mt];
+  const sg=mt==='concave'?-1:1;
+  const F={x:MX+sg*BASE_F*S,y:Y0},C={x:MX+sg*2*BASE_F*S,y:Y0};
+  const bound=(P,d)=>{let L=280;if(Math.abs(d.y)>1e-6){L=Math.min(L,d.y>0?(P.y-65)/d.y:(P.y-335)/d.y)}return L};
+  const sc={mtype:mt,F,C};
+  if(mt==='plane'){
+    const th=pick([20,30,40,50,60]),s=pick([-1,1]),P={x:MX,y:Y0+rnd(-50,50)},rad=th*Math.PI/180;
+    const d={x:Math.cos(rad),y:s*Math.sin(rad)},L=bound(P,d);
+    Object.assign(sc,{P,dIn:d,start:{x:P.x-d.x*L,y:P.y-d.y*L},r:{x:-d.x,y:d.y},kind:'plane',
+      text:`一道光線以 ${th}° 的入射角射向平面鏡（如圖），反射光線會往哪個方向前進？`,
+      explain:`平面鏡遵守反射定律：反射角 = 入射角 = ${th}°，且反射線與入射線在法線兩側。`});
+    return sc;
+  }
+  const kind=pick(['parallel','focus','center','vertex']);sc.kind=kind;
+  const h=pick([-70,-55,-40,40,55,70]);let P={x:MX,y:Y0+h},d,start,r;
+  if(kind==='parallel'){
+    start={x:MX-380,y:P.y};d={x:1,y:0};
+    r=mt==='concave'?un(F.x-P.x,F.y-P.y):un(P.x-F.x,P.y-F.y);
+    sc.text=`一束平行於主軸的光線射向${name}（如圖），反射光線會往哪邊走？`;
+    sc.explain=mt==='concave'?'凹面鏡：平行主軸的光反射後會通過焦點 F。':'凸面鏡：平行主軸的光反射後發散，反向延長線通過鏡後的虛焦點 F。';
+  }else if(kind==='focus'){
+    if(mt==='concave'){
+      start={x:F.x+(F.x-P.x)*.5,y:F.y+(F.y-P.y)*.5};
+      sc.text='一道通過焦點 F 的光線射向凹面鏡（如圖），反射光線會往哪邊走？';
+      sc.explain='光路可逆：通過焦點 F 的光，反射後會平行主軸射出。';
+    }else{
+      P={x:MX,y:Y0+pick([-35,-25,25,35])};start={x:P.x+(P.x-F.x)*2.4,y:P.y+(P.y-F.y)*2.4};sc.virtTo=F;
+      sc.text='一道朝向凸面鏡後方焦點 F（虛線）的光線射向凸面鏡，反射光線會往哪邊走？';
+      sc.explain='凸面鏡：朝向鏡後焦點 F 入射的光，反射後會平行主軸射出。';
+    }
+    d=un(P.x-start.x,P.y-start.y);r={x:-1,y:0};
+  }else if(kind==='center'){
+    if(mt==='concave'){
+      start={x:C.x+(C.x-P.x)*.35,y:C.y+(C.y-P.y)*.35};
+      sc.text='一道通過球心 C 的光線射向凹面鏡（如圖），反射光線會往哪邊走？';
+    }else{
+      P={x:MX,y:Y0+pick([-45,-30,30,45])};start={x:P.x+(P.x-C.x)*1.2,y:P.y+(P.y-C.y)*1.2};sc.virtTo=C;
+      sc.text='一道朝向凸面鏡後方球心 C（虛線）的光線射向凸面鏡，反射光線會往哪邊走？';
+    }
+    d=un(P.x-start.x,P.y-start.y);r={x:-d.x,y:-d.y};
+    sc.explain='通過（或朝向）球心 C 的光線垂直於鏡面，會沿原路反射回去。';
+  }else{
+    const a=pick([20,30,40]),s=pick([-1,1]),rad=a*Math.PI/180;P={x:MX,y:Y0};
+    d={x:Math.cos(rad),y:s*Math.sin(rad)};const L=bound(P,d);start={x:P.x-d.x*L,y:P.y-d.y*L};r={x:-d.x,y:d.y};
+    sc.text=`一道光線射向${name}的中心頂點，與主軸夾 ${a}°（如圖），反射光線會往哪邊走？`;
+    sc.explain='射到頂點的光線，主軸就是法線，所以反射線與主軸的夾角等於入射角，在主軸另一側。';
+  }
+  Object.assign(sc,{P,dIn:d,start,r});return sc;
+}
+function rayScene(sc,cand,mini){
+  const reveal=mini?null:id=>{
+    let s=ray(sc.P.x,sc.P.y,sc.P.x+sc.r.x*250,sc.P.y+sc.r.y*250,'#7CFFB2',{id,w:5,glow:1,flow:1});
+    if(sc.mtype==='convex'&&sc.kind==='parallel')s+=`<line x1="${sc.P.x}" y1="${sc.P.y}" x2="${sc.F.x}" y2="${sc.F.y}" stroke="#7CFFB2" stroke-width="2" stroke-dasharray="5 5" opacity=".8"/>`;
+    return s+txt(sc.P.x-200,Y0+(sc.P.y>Y0?-110:110),'✔ 正確的反射光',16,'#7CFFB2');
+  };
+  return scene({mtype:sc.mtype,mini,reveal,
+    extra:id=>{
+      let s='';
+      if(sc.mtype==='plane')s+=`<line x1="${sc.P.x-210}" y1="${sc.P.y}" x2="${sc.P.x+90}" y2="${sc.P.y}" stroke="#fff" stroke-opacity=".6" stroke-dasharray="6 5"/>`+txt(sc.P.x-205,sc.P.y-8,'法線',mini?20:14,'#dfe5ff','start');
+      else s+=txt(mini?135:16,Y0-8,'主軸',mini?20:14,'#dfe5ff','start');
+      s+=ray(sc.start.x,sc.start.y,sc.P.x,sc.P.y,'#ffd23f',{id,w:4,glow:1,flow:1});
+      if(sc.virtTo)s+=`<line x1="${sc.P.x}" y1="${sc.P.y}" x2="${sc.virtTo.x}" y2="${sc.virtTo.y}" stroke="#ffd23f" stroke-width="2.5" stroke-dasharray="4 6" opacity=".7"/>`;
+      if(cand)s+=ray(sc.P.x,sc.P.y,sc.P.x+cand.x*240,sc.P.y+cand.y*240,'#ff6fa5',{id,w:4,glow:1,flow:1});
+      return s+`<circle cx="${sc.P.x}" cy="${sc.P.y}" r="5" fill="#fff"/>`;
+    }});
+}
+function gen3(){
+  const sc=buildRaySc(),r=sc.r,d=sc.dIn;
+  const pool=[{x:r.x,y:-r.y},{x:-d.x,y:-d.y},{x:d.x,y:d.y},{x:-1,y:0},{x:d.x,y:-d.y},
+    rot(r,25),rot(r,-25),rot(r,50),rot(r,-50),rot(r,75),rot(r,-75)];
+  if(sc.mtype!=='plane'){pool.push(un(sc.F.x-sc.P.x,sc.F.y-sc.P.y),un(sc.P.x-sc.F.x,sc.P.y-sc.F.y),un(sc.C.x-sc.P.x,sc.C.y-sc.P.y),un(sc.P.x-sc.C.x,sc.P.y-sc.C.y))}
+  const chosen=[];
+  shuffle(pool).forEach(c=>{if(chosen.length<4&&angDiff(c,r)>14&&chosen.every(x=>angDiff(x,c)>14))chosen.push(c)});
+  for(let a=90;chosen.length<4;a+=17){const c=rot(r,a);if(angDiff(c,r)>14&&chosen.every(x=>angDiff(x,c)>14))chosen.push(c)}
+  const options=shuffle([{c:r,ok:true},...chosen.map(c=>({c}))]).map(o=>({correct:!!o.ok,html:rayScene(sc,o.c,true)}));
+  return{type:3,tag:'💡 光的反射路徑',mode:'image',stage:rayScene(sc,null,false),options,text:sc.text,explain:sc.explain};
+}
+
+/* ============ 題型 4：點燃火柴 ============ */
+function gen4(){
+  const mode=Math.random()<.5?'text':'image';
+  if(mode==='text'){
+    const f=pick([2,3]),ks=[.5,1,1.5,2,3];
+    const stage=scene({mtype:'concave',f,nums:true,showF:false,sun:true,
+      reveal:id=>{
+        const Fp={x:MX-f*S,y:Y0};let s='';
+        SUN_YS.forEach(y=>{const P={x:MX,y:Y0+y};s+=ray(P.x,P.y,P.x+(Fp.x-P.x)*1.6,P.y+(Fp.y-P.y)*1.6,'#ff6fa5',{id,w:3,arrow:false,glow:1})});
+        return s+matchstick(id,Fp.x,true)+txt(Fp.x,Y0+40,'焦點 F',15,'#7CFFB2');
+      }});
+    const options=ks.map(k=>({correct:k===1,html:`鏡前 ${fmt(k*f)} 格處`}));
+    return{type:4,tag:'🔥 聚光點燃火柴',mode,stage,options,
+      text:`太陽光平行射向凹面鏡（球心 C 在鏡前 ${2*f} 格處）。想用反射的陽光點燃火柴，火柴頭應放在哪個位置？`,
+      explain:`焦點 F 在鏡面與球心 C 的正中間，也就是鏡前 ${f} 格處，平行光會聚在這裡。`};
+  }
+  const stage=scene({noAxis:true,sun:true,sunTo:455,
+    extra:id=>`<rect x="470" y="85" width="30" height="250" rx="10" fill="none" stroke="#fff" stroke-width="3" stroke-dasharray="7 7"/>`+
+      txt(485,75,'鏡子？',16,'#fff')+matchstick(id,650,false)+txt(650,Y0-120,'想點燃我！',16,'#ffb3b3')});
+  const poolO=[{t:'concave',u:1},{t:'concave',u:4},{t:'concave',u:6},{t:'convex',u:2},{t:'plane',u:2}];
+  const opts=[{t:'concave',u:2,ok:true},...shuffle(poolO).slice(0,4)];
+  const options=shuffle(opts).map(o=>({correct:!!o.ok,
+    html:scene({mtype:o.t,mini:true,sun:true,showF:false,match:{u:o.u,lit:false}})}));
+  return{type:4,tag:'🔥 聚光點燃火柴',mode:'image',stage,options,
+    text:'想利用鏡子聚集太陽光來點燃火柴，下列哪一張圖的鏡子與火柴位置最容易點火？（圖中 C 為球心）',
+    explain:'只有凹面鏡能把平行光聚在焦點；焦點在鏡面與球心 C 的正中間。凸面鏡、平面鏡都無法聚光。'};
+}
+
+/* ============ 遊戲流程 ============ */
+const GEN={1:gen1,2:gen2,3:gen3,4:gen4};
+const TYPE_NAME={1:'由成像找物體位置',2:'判斷成像',3:'光的反射路徑',4:'聚光點火'};
+const $=id=>document.getElementById(id);
+let G=null,timer=null,nextTimer=null;
+
+function makeQuestions(){
+  let types=[];for(let i=0;i<TOTAL;i++)types.push(1+i%4);types=shuffle(types);
+  return types.map(t=>GEN[t]());
+}
+function startGame(){
+  G={qs:makeQuestions(),idx:0,score:0,res:[],locked:false,t0:0};
+  $('start').classList.add('hidden');$('end').classList.add('hidden');$('game').classList.remove('hidden');
+  $('score').textContent=0;showQuestion();
+}
+function showQuestion(){
+  clearTimeout(nextTimer);$('fb').classList.add('hidden');
+  const q=G.qs[G.idx];G.locked=false;
+  $('qn').textContent=G.idx+1;$('qtag').textContent=q.tag;$('qtext').textContent=q.text;$('stage').innerHTML=q.stage;
+  const o=$('options');o.className='options '+q.mode;
+  o.innerHTML=q.options.map((op,i)=>`<button class="opt" data-i="${i}"><span class="letter">${'ABCDE'[i]}</span><div class="body">${op.html}</div></button>`).join('');
+  o.querySelectorAll('.opt').forEach(b=>b.onclick=()=>answer(+b.dataset.i));
+  const c=$('qcard');c.style.animation='none';void c.offsetWidth;c.style.animation='';
+  G.t0=performance.now();clearInterval(timer);timer=setInterval(tick,50);tick();
+  window.scrollTo({top:0,behavior:'smooth'});
+}
+function tick(){
+  const t=(performance.now()-G.t0)/1000;
+  if(t>=LIMIT){clearInterval(timer);if(!G.locked)finish(false,LIMIT,-1,true);return}
+  const cl=$('clock'),fl=$('tfill');
+  cl.textContent=(t<10?'0':'')+t.toFixed(1);
+  fl.style.width=(t/LIMIT*100)+'%';
+  const st=t<=BONUS_T?'gold':(t<LIMIT-4?'warn':'danger');
+  cl.className='clock '+st;fl.className=st==='gold'?'':st;
+  $('timeHint').textContent=t<=BONUS_T?`⚡ 加分時間！現在答對 +${BASE_PTS+BONUS_PTS} 分（剩 ${(BONUS_T-t).toFixed(1)} 秒）`:`⏳ 加分時間已過，現在答對只有 +${BASE_PTS} 分`;
+}
+function answer(i){
+  if(G.locked)return;
+  const t=(performance.now()-G.t0)/1000;
+  finish(G.qs[G.idx].options[i].correct,t,i,false);
+}
+function finish(correct,t,chosen,timeout){
+  if(G.locked)return;G.locked=true;clearInterval(timer);
+  const q=G.qs[G.idx];let pts=0;
+  if(correct)pts=t<=BONUS_T?BASE_PTS+BONUS_PTS:BASE_PTS;
+  G.score+=pts;G.res.push({type:q.type,tag:q.tag,correct,pts,t,timeout});
+  const sc=$('score');sc.textContent=G.score;sc.classList.remove('bump');void sc.offsetWidth;sc.classList.add('bump');
+  document.querySelectorAll('#options .opt').forEach((b,i)=>{
+    b.disabled=true;
+    if(q.options[i].correct)b.classList.add('correct');
+    else if(i===chosen)b.classList.add('wrong');
+    else b.classList.add('dim');
+  });
+  document.querySelectorAll('#stage .reveal').forEach(e=>e.classList.add('show'));
+  const fb=$('fb');fb.className='fb '+(correct?'ok':'no');
+  const head=correct?`答對了！ +${pts} 分${pts>BASE_PTS?'（含加分 5）':'（超過 15 秒，沒有加分）'}`:(timeout?'時間到！ 0 分':'答錯了… 0 分');
+  fb.innerHTML=`<div class="ico">${correct?'🎉':(timeout?'⏰':'💥')}</div><div class="msg"><b>${head}</b><small>${q.explain}</small></div><button id="nextBtn">${G.idx+1>=TOTAL?'看結果':'下一題 ▶'}</button>`;
+  $('nextBtn').onclick=next;
+  nextTimer=setTimeout(next,NEXT_DELAY);
+}
+function next(){
+  clearTimeout(nextTimer);$('fb').classList.add('hidden');
+  if(G.idx+1>=TOTAL)return endGame();
+  G.idx++;showQuestion();
+}
+function endGame(){
+  clearInterval(timer);$('game').classList.add('hidden');$('end').classList.remove('hidden');
+  const sc=G.score,max=TOTAL*(BASE_PTS+BONUS_PTS),ratio=sc/max;
+  const [rank,emo]=ratio>=.9?['光學大師','🏆✨🔭✨🏆']:ratio>=.7?['光學達人','🥇🔦🪞']:ratio>=.5?['光學學徒','🥈🕯️']:ratio>=.3?['光學新手','🥉💡']:['繼續加油','📚🔍'];
+  $('rank').textContent=rank;$('endEmoji').textContent=emo;$('finalScore').textContent=sc;
+  let best=0;try{best=Math.max(+localStorage.getItem('mirrorQuizBest')||0,sc);localStorage.setItem('mirrorQuizBest',best)}catch(e){best=sc}
+  $('bestTxt2').textContent=`最高紀錄：${best} 分`;
+  const ok=G.res.filter(r=>r.correct).length,avg=G.res.reduce((a,r)=>a+r.t,0)/G.res.length;
+  const fast=G.res.filter(r=>r.pts>BASE_PTS).length;
+  $('stats').innerHTML=`<div>答對題數<b>${ok} / ${TOTAL}</b></div><div>獲得加分次數<b>${fast}</b></div><div>平均作答時間<b>${avg.toFixed(1)} 秒</b></div>`;
+  $('typeStats').innerHTML=[1,2,3,4].map(t=>{const a=G.res.filter(r=>r.type===t),c=a.filter(r=>r.correct).length;return `<div>${TYPE_NAME[t]}<b>${c} / ${a.length}</b></div>`}).join('');
+  $('review').innerHTML=`<tr><th>#</th><th>題型</th><th>結果</th><th>用時</th><th>得分</th></tr>`+
+    G.res.map((r,i)=>`<tr><td>${i+1}</td><td class="l">${r.tag}</td><td class="${r.correct?'good':'bad'}">${r.correct?'✔ 答對':(r.timeout?'⏰ 超時':'✘ 答錯')}</td><td>${r.t.toFixed(1)}s</td><td>${r.pts}</td></tr>`).join('');
+  window.scrollTo({top:0});
+}
+document.addEventListener('keydown',e=>{
+  if(!G||$('game').classList.contains('hidden'))return;
+  if(e.key==='Enter'&&G.locked){next();return}
+  const k='abcde'.indexOf(e.key.toLowerCase()),n=parseInt(e.key)-1;
+  const i=k>=0?k:(n>=0&&n<5?n:-1);if(i>=0)answer(i);
+});
+$('startBtn').onclick=startGame;$('againBtn').onclick=startGame;
+try{const b=+localStorage.getItem('mirrorQuizBest');if(b)$('bestTxt').textContent=`🏅 目前最高紀錄：${b} 分`}catch(e){}
+</script>
+</body>
+</html>
